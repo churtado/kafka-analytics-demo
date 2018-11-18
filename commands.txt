@@ -1,0 +1,39 @@
+## General kafka commands
+Look here: http://192.168.1.134:8083/connectors/
+
+# List topics
+kafka-topics --zookeeper localhost:2181 --list
+
+## Setup for consuming db rows as text in console
+
+# Delete existing topic, restart confluent
+kafka-topics --zookeeper localhost:2181 --delete --topic text-event
+kafka-topics --zookeeper localhost:2181 --delete --topic profile-event
+confluent stop
+confluent start
+
+# Create topics
+kafka-topics --create --topic text-test --zookeeper localhost:2181 --replication-factor 1 --partitions 3
+kafka-topics --create --topic profile-event --zookeeper localhost:2181 --replication-factor 1 --partitions 3
+
+# Delete existing connector and create the connector
+curl -X DELETE http://localhost:8083/connectors/text_test
+curl -X DELETE http://localhost:8083/connectors/source_event
+curl -X DELETE http://localhost:8083/connectors/sink_event
+
+# Create text source
+confluent load text_test -d ~/source-postgres-text.properties
+
+# Create source for updates
+confluent load text_test -d ~/source-postgres-updates-text.properties
+
+# Create event source and sink
+confluent load source_event -d ~/source-event.properties
+confluent load sink_event -d ~/sink-event.properties
+
+# Consume the topic in the console
+kafka-console-consumer --bootstrap-server localhost:9092 --topic text-event --from-beginning
+kafka-console-consumer --bootstrap-server localhost:9092 --topic profile-event --from-beginning
+
+select * from event order by event_date desc;
+select * from "profile-event" order by event_date desc;
